@@ -12,19 +12,27 @@ const Views = {
         
         items.forEach(item => {
             const count = GameState.shopItems?.[item.id] || 0;
-            const cost = item.basePrice * Math.pow(item.priceMultiplier, count);
+            const purchaseAmount = UI.purchaseMode === 'max'
+                ? Economy.calculateMaxAffordable(GameState.energy, count, item.basePrice, item.priceMultiplier)
+                : UI.purchaseMode;
+            const cost = Economy.calculateBulkCost(Math.max(1, purchaseAmount), count, item.basePrice, item.priceMultiplier);
             const income = item.baseIncome * Math.pow(item.effectMultiplier, count);
             
-            const canAfford = GameState.energy >= cost;
+            const canAfford = purchaseAmount > 0 && GameState.energy >= cost;
             const isPaused = GameState.isPaused;
             
             const div = document.createElement('div');
             div.className = `shop-item ${canAfford ? 'affordable' : 'unaffordable'} ${isPaused ? 'disabled' : ''}`;
             
+            const buyLabel = UI.purchaseMode === 'max'
+                ? i18n.t('buyMax')
+                : `${i18n.t('buy')} x${UI.purchaseMode}`;
+
             div.innerHTML = `
                 <div class="item-info">
                     <div class="item-name">${item.icon} ${i18n.t(item.name)}</div>
                     <div class="item-desc">${i18n.t(item.desc, { income: FormatUtils.format(income) })}</div>
+                    <div class="item-effect">${i18n.t('effectLabel', { effect: `+${FormatUtils.format(income)}/s` })}</div>
                     <div class="item-level">${i18n.t('owned')}: ${count}</div>
                 </div>
                 <div class="item-price">
@@ -32,15 +40,21 @@ const Views = {
                     <div class="price-label">${i18n.t('currency')}</div>
                 </div>
                 <button class="buy-button" ${!canAfford || isPaused ? 'disabled' : ''} data-item="${item.id}">
-                    ${i18n.t('buy')}
+                    ${buyLabel}
                 </button>
             `;
             
             div.querySelector('.buy-button').addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (GameState.buyShopItem(item.id)) {
+                const result = GameState.buyShopItem(item.id, UI.purchaseMode);
+                if (result && result.success) {
+                    UI.showToast(i18n.t('purchaseSuccess'), 'success');
+                    UI.updateSatellites();
                     Views.renderShop();
                     Views.renderHeader();
+                } else {
+                    AudioUtils.playError();
+                    UI.showToast(i18n.t('notEnoughEnergy'), 'warning');
                 }
             });
             
@@ -65,24 +79,32 @@ const Views = {
         upgradeItems.forEach(item => {
             const config = Economy.getUpgradeConfig(item.type);
             const level = GameState.upgrades[item.type];
-            const cost = Economy.calculateCost(level, config.basePrice, config.priceMultiplier);
+            const purchaseAmount = UI.purchaseMode === 'max'
+                ? Economy.calculateMaxAffordable(GameState.energy, level, config.basePrice, config.priceMultiplier)
+                : UI.purchaseMode;
+            const cost = Economy.calculateBulkCost(Math.max(1, purchaseAmount), level, config.basePrice, config.priceMultiplier);
             const currentEffect = Economy.calculateEffect(level, config.baseEffect, config.effectMultiplier);
             const nextEffect = Economy.calculateEffect(level + 1, config.baseEffect, config.effectMultiplier);
             
-            const canAfford = GameState.energy >= cost;
+            const canAfford = purchaseAmount > 0 && GameState.energy >= cost;
             const isPaused = GameState.isPaused;
             
             const div = document.createElement('div');
             div.className = `upgrade-item ${canAfford ? 'affordable' : 'unaffordable'} ${isPaused ? 'disabled' : ''}`;
             
-            const effect = item.type === 'multiplier' ? 
-                nextEffect.toFixed(2) + 'x' : 
-                '+' + FormatUtils.format(nextEffect);
+            const effect = item.type === 'multiplier'
+                ? nextEffect.toFixed(2) + 'x'
+                : '+' + FormatUtils.format(nextEffect);
+
+            const buyLabel = UI.purchaseMode === 'max'
+                ? i18n.t('buyMax')
+                : `${i18n.t('buyButton')} x${UI.purchaseMode}`;
             
             div.innerHTML = `
                 <div class="item-info">
                     <div class="item-name">${config.icon} ${i18n.t(item.nameKey)}</div>
                     <div class="item-desc">${i18n.t(item.descKey, { effect: effect })}</div>
+                    <div class="item-effect">${i18n.t('effectLabel', { effect: effect })}</div>
                     <div class="item-level">${i18n.t('upgradeLevel')}: ${level}</div>
                 </div>
                 <div class="item-price">
@@ -90,15 +112,24 @@ const Views = {
                     <div class="price-label">${i18n.t('priceLabel')}</div>
                 </div>
                 <button class="buy-button" ${!canAfford || isPaused ? 'disabled' : ''} data-type="${item.type}">
-                    ${i18n.t('buyButton')}
+                    ${buyLabel}
                 </button>
             `;
             
             div.querySelector('.buy-button').addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (GameState.buyUpgrade(item.type)) {
+                const result = GameState.buyUpgrade(item.type, UI.purchaseMode);
+                if (result && result.success) {
+                    UI.showToast(i18n.t('purchaseSuccess'), 'success');
+                    UI.updateSatellites();
                     Views.renderUpgrades();
                     Views.renderHeader();
+                } else {
+                    AudioUtils.playError();
+                    UI.showToast(i18n.t('notEnoughEnergy'), 'warning', {
+                        label: i18n.t('goToShop'),
+                        onClick: () => UI.switchTab('shop')
+                    });
                 }
             });
             
@@ -133,6 +164,19 @@ const Views = {
                 <div class="prestige-stat">
                     ${i18n.t('prestigeBonus')}: <span class="prestige-stat-value">x${bonusMultiplier.toFixed(2)}</span>
                 </div>
+                <div class="prestige-details">
+                    <p>${i18n.t('prestigeResetList')}</p>
+                    <ul>
+                        <li>${i18n.t('prestigeResetEnergy')}</li>
+                        <li>${i18n.t('prestigeResetUpgrades')}</li>
+                        <li>${i18n.t('prestigeResetShop')}</li>
+                    </ul>
+                    <p>${i18n.t('prestigeKeepList')}</p>
+                    <ul>
+                        <li>${i18n.t('prestigeKeepPoints')}</li>
+                        <li>${i18n.t('prestigeKeepAchievements')}</li>
+                    </ul>
+                </div>
         `;
         
         if (canPrestige) {
@@ -162,6 +206,7 @@ const Views = {
                     () => {
                         GameState.prestige();
                         YandexSDKManager.submitScore(GameState.totalEarned);
+                        UI.triggerPrestigeEffect();
                         Views.renderHeader();
                         Views.renderPrestige();
                         Views.renderShop();
@@ -211,13 +256,25 @@ const Views = {
      * Render header stats
      */
     renderHeader() {
-        document.getElementById('energyDisplay').textContent = FormatUtils.format(GameState.energy);
+        const updateStat = (id, value) => {
+            const el = document.getElementById(id);
+            const previous = Number(el.getAttribute('data-value') || 0);
+            el.textContent = value;
+            el.setAttribute('data-value', value.replace(/[^0-9.]/g, ''));
+            if (Number.isFinite(previous) && value && value !== el.getAttribute('data-last-text')) {
+                el.classList.remove('stat-pop');
+                void el.offsetWidth;
+                el.classList.add('stat-pop');
+            }
+            el.setAttribute('data-last-text', value);
+        };
+        updateStat('energyDisplay', FormatUtils.format(GameState.energy));
         
         const prestigeMultiplier = Economy.calculatePrestigeMultiplier(GameState.prestigeCount);
         const totalEPS = GameState.eps * prestigeMultiplier;
-        document.getElementById('epsDisplay').textContent = FormatUtils.format(totalEPS) + '/s';
+        updateStat('epsDisplay', `${FormatUtils.format(totalEPS)}/s`);
         
-        document.getElementById('clickPowerDisplay').textContent = FormatUtils.format(GameState.clickPower);
+        updateStat('clickPowerDisplay', FormatUtils.format(GameState.clickPower));
     },
     
     /**
@@ -246,12 +303,10 @@ const Views = {
         
         const tutorial = document.getElementById('tutorial');
         const tutorialText = tutorial.querySelector('.tutorial-text');
-        
-        if (GameState.tutorialStep === 0) {
-            tutorialText.textContent = i18n.t('tutorialStep1');
-            tutorial.classList.remove('hidden');
-            GameState.tutorialStep++;
-        }
+        const steps = ['tutorialStep1', 'tutorialStep2', 'tutorialStep3'];
+        const stepIndex = Math.min(GameState.tutorialStep, steps.length - 1);
+        tutorialText.textContent = i18n.t(steps[stepIndex]);
+        tutorial.classList.remove('hidden');
     },
     
     /**
@@ -259,6 +314,19 @@ const Views = {
      */
     hideTutorial() {
         document.getElementById('tutorial').classList.add('hidden');
+    },
+
+    /**
+     * Advance tutorial steps
+     */
+    advanceTutorial() {
+        if (GameState.tutorialCompleted) return;
+        GameState.tutorialStep += 1;
+        if (GameState.tutorialStep >= 3) {
+            Views.completeTutorial();
+            return;
+        }
+        Views.showTutorial();
     },
     
     /**

@@ -23,6 +23,7 @@ const GameState = {
     
     // Settings
     soundEnabled: true,
+    soundVolume: 1,
     language: CONFIG.DEFAULT_LANGUAGE,
     
     // Game state
@@ -35,6 +36,8 @@ const GameState = {
     lastAdInterstitial: 0,
     lastAdRewarded: 0,
     offlineMultiplierEnd: 0,
+    sessionStart: TimeUtils.now(),
+    nextInterstitialAt: 0,
     
     // UI state
     achievements: [],
@@ -46,10 +49,34 @@ const GameState = {
      */
     init(saveData) {
         Object.assign(this, saveData);
+        this.sanitize();
+        this.sessionStart = this.sessionStart || TimeUtils.now();
+        this.nextInterstitialAt = this.nextInterstitialAt || 0;
         StatsSystem.init(this);
         QuestSystem.init(this);
         AchievementSystem.checkNewAchievements(this);
         logDebug('Game state initialized');
+    },
+
+    /**
+     * Sanitize numeric values
+     */
+    sanitize() {
+        const numericFields = ['energy', 'totalEarned', 'clickPower', 'eps', 'prestigeCount', 'prestigePoints'];
+        numericFields.forEach(field => {
+            if (!Number.isFinite(this[field]) || this[field] < 0) {
+                this[field] = 0;
+            }
+        });
+        if (!this.upgrades) {
+            this.upgrades = { clickPower: 0, eps: 0, multiplier: 0 };
+        }
+        if (!this.shopItems) {
+            this.shopItems = {};
+        }
+        if (this.soundVolume === undefined || this.soundVolume === null) {
+            this.soundVolume = 1;
+        }
     },
     
     /**
@@ -71,14 +98,25 @@ const GameState = {
         const comboMultiplier = PowerUpSystem.getComboMultiplier();
         
         gain *= powerUpMultiplier * comboMultiplier;
+
+        let isCrit = false;
+        let critMultiplier = 1;
+        if (Math.random() < CONFIG.CLICK.critChance) {
+            isCrit = true;
+            critMultiplier = CONFIG.CLICK.critMin + Math.random() * (CONFIG.CLICK.critMax - CONFIG.CLICK.critMin);
+            gain *= critMultiplier;
+        }
         
+        if (!Number.isFinite(gain)) {
+            gain = 0;
+        }
         this.energy += gain;
         this.totalEarned += gain;
         
         AudioUtils.init();
         AudioUtils.playClick();
         
-        return gain;
+        return { gain, isCrit, critMultiplier };
     },
     
     /**
@@ -96,13 +134,23 @@ const GameState = {
         // Check for rewarded ad multiplier
         if (this.offlineMultiplierEnd > TimeUtils.now()) {
             // Apply multiplier
-            const gain = (totalEPS * CONFIG.AD.rewardedBonus.multiplier * deltaTime) / 1000;
+            let gain = (totalEPS * CONFIG.AD.rewardedBonus.multiplier * deltaTime) / 1000;
+            if (gain > CONFIG.GAME.MAX_GAIN_PER_TICK) {
+                gain = CONFIG.GAME.MAX_GAIN_PER_TICK;
+            }
             this.energy += gain;
             this.totalEarned += gain;
         } else {
-            const gain = (totalEPS * deltaTime) / 1000;
+            let gain = (totalEPS * deltaTime) / 1000;
+            if (gain > CONFIG.GAME.MAX_GAIN_PER_TICK) {
+                gain = CONFIG.GAME.MAX_GAIN_PER_TICK;
+            }
             this.energy += gain;
             this.totalEarned += gain;
+        }
+
+        if (!Number.isFinite(this.energy) || this.energy < 0) {
+            this.energy = 0;
         }
         
         // Обновить статистику
@@ -126,22 +174,26 @@ const GameState = {
     /**
      * Buy an upgrade
      */
-    buyUpgrade(upgradeType) {
+    buyUpgrade(upgradeType, quantity = 1) {
         if (this.isPaused) return false;
         
         const config = Economy.getUpgradeConfig(upgradeType);
         if (!config) return false;
         
         const level = this.upgrades[upgradeType];
-        const cost = Economy.calculateCost(level, config.basePrice, config.priceMultiplier);
+        const amount = quantity === 'max'
+            ? Economy.calculateMaxAffordable(this.energy, level, config.basePrice, config.priceMultiplier)
+            : quantity;
+        if (!amount || amount <= 0) return false;
+        const cost = Economy.calculateBulkCost(amount, level, config.basePrice, config.priceMultiplier);
         
         if (this.energy < cost) return false;
         
         this.energy -= cost;
-        this.upgrades[upgradeType]++;
+        this.upgrades[upgradeType] += amount;
         
         // Обновить квесты
-        QuestSystem.updateProgress(this, 'upgrades', 
+        QuestSystem.updateProgress(this, 'upgrades',
             (this.upgrades.clickPower || 0) + 
             (this.upgrades.eps || 0) + 
             (this.upgrades.multiplier || 0)
@@ -153,13 +205,13 @@ const GameState = {
         AudioUtils.init();
         AudioUtils.playSuccess();
         
-        return true;
+        return { success: true, spent: cost, amount };
     },
     
     /**
      * Buy a shop item (generator)
      */
-    buyShopItem(itemId) {
+    buyShopItem(itemId, quantity = 1) {
         if (this.isPaused) return false;
         
         const item = CONFIG.SHOP_ITEMS[itemId];
@@ -167,21 +219,28 @@ const GameState = {
         
         if (!this.shopItems) this.shopItems = {};
         const count = this.shopItems[itemId] || 0;
-        const cost = item.basePrice * Math.pow(item.priceMultiplier, count);
+        const amount = quantity === 'max'
+            ? Economy.calculateMaxAffordable(this.energy, count, item.basePrice, item.priceMultiplier)
+            : quantity;
+        if (!amount || amount <= 0) return false;
+        const cost = Economy.calculateBulkCost(amount, count, item.basePrice, item.priceMultiplier);
         
         if (this.energy < cost) return false;
         
         this.energy -= cost;
-        this.shopItems[itemId] = count + 1;
+        this.shopItems[itemId] = count + amount;
         
         // Add income from shop item
-        const income = item.baseIncome * Math.pow(item.effectMultiplier, count);
+        let income = 0;
+        for (let i = 0; i < amount; i++) {
+            income += item.baseIncome * Math.pow(item.effectMultiplier, count + i);
+        }
         this.eps += income;
         
         AudioUtils.init();
         AudioUtils.playSuccess();
         
-        return true;
+        return { success: true, spent: cost, amount };
     },
     
     /**
@@ -232,6 +291,8 @@ const GameState = {
         this.energy = 0;
         this.totalEarned = 0;
         this.upgrades = { clickPower: 0, eps: 0, multiplier: 0 };
+        this.shopItems = {};
+        this.eps = CONFIG.INITIAL_EPS;
         this.updateStats();
         
         AudioUtils.init();
@@ -315,11 +376,14 @@ const GameState = {
             prestigeCount: this.prestigeCount,
             prestigePoints: this.prestigePoints,
             soundEnabled: this.soundEnabled,
+            soundVolume: this.soundVolume,
             language: this.language,
             lastSave: TimeUtils.now(),
             lastActive: this.lastActive,
             lastAdInterstitial: this.lastAdInterstitial,
             lastAdRewarded: this.lastAdRewarded,
+            sessionStart: this.sessionStart,
+            nextInterstitialAt: this.nextInterstitialAt,
             achievements: this.achievements,
             tutorialCompleted: this.tutorialCompleted,
             tutorialStep: this.tutorialStep

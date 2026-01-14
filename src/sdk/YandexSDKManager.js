@@ -130,7 +130,7 @@ const YandexSDKManager = {
      */
     async getPlayerData() {
         if (this.isLocalStub) {
-            return StorageUtils.getLocal('sdk_player_data') || {};
+            return PersistUtils.getLocal('sdk_player_data') || {};
         }
         
         try {
@@ -152,7 +152,7 @@ const YandexSDKManager = {
      */
     async setPlayerData(data) {
         if (this.isLocalStub) {
-            StorageUtils.setLocal('sdk_player_data', data);
+            PersistUtils.setLocal('sdk_player_data', data);
             return true;
         }
         
@@ -218,25 +218,27 @@ const YandexSDKManager = {
                 GameState.resume();
                 return { success: true };
             } else if (this.sdkInstance) {
-                await this.sdkInstance.adv.showRewardedVideo({
-                    onOpen: () => {
-                        logDebug('Ad opened');
-                    },
-                    onRewarded: () => {
-                        logDebug('Ad rewarded');
-                        GameState.resume();
-                        return { success: true };
-                    },
-                    onClose: () => {
-                        logDebug('Ad closed');
-                        GameState.resume();
-                        return { success: false };
-                    },
-                    onError: (error) => {
-                        logError('Ad error:', error);
-                        GameState.resume();
-                        return { success: false };
-                    }
+                return await new Promise((resolve) => {
+                    this.sdkInstance.adv.showRewardedVideo({
+                        onOpen: () => {
+                            logDebug('Ad opened');
+                        },
+                        onRewarded: () => {
+                            logDebug('Ad rewarded');
+                            GameState.resume();
+                            resolve({ success: true });
+                        },
+                        onClose: () => {
+                            logDebug('Ad closed');
+                            GameState.resume();
+                            resolve({ success: false });
+                        },
+                        onError: (error) => {
+                            logError('Ad error:', error);
+                            GameState.resume();
+                            resolve({ success: false });
+                        }
+                    });
                 });
             }
         } catch (e) {
@@ -260,13 +262,13 @@ const YandexSDKManager = {
         try {
             if (this.isLocalStub) {
                 // Store locally
-                let scores = StorageUtils.getLocal('leaderboard_scores') || [];
+                let scores = PersistUtils.getLocal('leaderboard_scores') || [];
                 scores.push({
                     name: 'Player',
                     score: score,
                     time: TimeUtils.now()
                 });
-                StorageUtils.setLocal('leaderboard_scores', scores);
+                PersistUtils.setLocal('leaderboard_scores', scores);
                 return true;
             } else if (this.sdkInstance) {
                 const lbk = await this.sdkInstance.getLeaderboards();
@@ -288,7 +290,7 @@ const YandexSDKManager = {
         try {
             if (this.isLocalStub) {
                 // Return local scores
-                const scores = StorageUtils.getLocal('leaderboard_scores') || [];
+                const scores = PersistUtils.getLocal('leaderboard_scores') || [];
                 return scores
                     .sort((a, b) => b.score - a.score)
                     .slice(0, topCount)
