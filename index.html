@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Orbit Clicker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app" class="app-container">
+        <!-- Main game screen -->
+        <div id="gameScreen" class="screen active">
+            <div class="game-header">
+                <div class="stat-item">
+                    <div class="stat-label" data-i18n="currency">Энергия</div>
+                    <div class="stat-value" id="energyDisplay">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label" data-i18n="eps">EPS</div>
+                    <div class="stat-value" id="epsDisplay">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label" data-i18n="clickPower">Клик</div>
+                    <div class="stat-value" id="clickPowerDisplay">0</div>
+                </div>
+            </div>
+
+            <div class="game-center">
+                <button id="clickButton" class="click-button" data-i18n="click">
+                    <div class="click-button-inner">
+                        <span class="click-icon">⚛</span>
+                    </div>
+                </button>
+                <div id="floatingNumbers" class="floating-numbers"></div>
+            </div>
+
+            <div class="game-footer">
+                <button class="tab-button active" data-tab="shop" data-i18n="shop">Магазин</button>
+                <button class="tab-button" data-tab="upgrades" data-i18n="upgrades">Улучшения</button>
+                <button class="tab-button" data-tab="prestige" data-i18n="prestige">Престиж</button>
+                <button class="tab-button" data-tab="leaderboard" data-i18n="leaderboard">Лидерборд</button>
+                <button class="tab-button" data-tab="achievements" data-i18n="achievements">Ачивки</button>
+                <button class="tab-button" data-tab="quests" data-i18n="quests">Квесты</button>
+                <button class="tab-button" data-tab="stats" data-i18n="stats">Статистика</button>
+                <button class="tab-button" data-tab="settings" data-i18n="settings">Настройки</button>
+            </div>
+        </div>
+
+        <!-- Shop Screen -->
+        <div id="shopScreen" class="screen">
+            <div class="screen-header">
+                <h2 data-i18n="shop">Магазин</h2>
+                <button class="back-button" data-close-screen="true">&times;</button>
+            </div>
+            <div id="shopContainer" class="shop-container"></div>
+        </div>
+
+        <!-- Upgrades Screen -->
+        <div id="upgradesScreen" class="screen">
+            <div class="screen-header">
+                <h2 data-i18n="upgrades">Улучшения</h2>
+                <button class="back-button" data-close-screen="true">&times;</button>
+            </div>
+            <div id="upgradesContainer" class="upgrades-container"></div>
+        </div>
+
+        <!-- Prestige Screen -->
+        <div id="prestigeScreen" class="screen">
+            <div class="screen-header">
+                <h2 data-i18n="prestige">Престиж</h2>
+                <button class="back-button" data-close-screen="true">&times;</button>
+            </div>
+            <div id="prestigeContainer" class="prestige-container"></div>
+        </div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboardScreen" class="screen">
+            <div class="screen-header">
+                <h2 data-i18n="leaderboard">Лидерборд</h2>
+                <button class="back-button" data-close-screen="true">&times;</button>
+            </div>
+            <div class="leaderboard-controls">
+                <button id="refreshLeaderboardBtn" class="btn-primary" data-i18n="refresh">Обновить</button>
+                <span id="leaderboardStatus" class="status-text"></span>
+            </div>
+            <div id="leaderboardContainer" class="leaderboard-container"></div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settingsScreen" class="screen">
+            <div class="screen-header">
+                <h2 data-i18n="settings">Настройки</h2>
+                <button class="back-button" data-close-screen="true">&times;</button>
+            </div>
+            <div class="settings-container">
+                <div class="setting-item">
+                    <label data-i18n="soundLabel">Звук</label>
+                    <button id="soundToggle" class="toggle-button active" data-i18n="on">ВКЛ</button>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="languageLabel">Язык</label>
+                    <div class="language-buttons">
+                        <button class="lang-button active" data-lang="ru">РУ</button>
+                        <button class="lang-button" data-lang="en">EN</button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <button id="watchAdBtn" class="btn-primary" data-i18n="watchAdForBonus">Смотреть рекламу за бонус</button>
+                </div>
+                <div class="setting-item">
+                    <button id="syncCloudBtn" class="btn-secondary" data-i18n="syncCloud">Синхронизировать с облаком</button>
+                </div>
+                <div class="setting-item">
+                    <button id="resetBtn" class="btn-danger" data-i18n="resetProgress">Сбросить прогресс</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Achievements Screen -->
+        <div id="achievementsScreen" class="screen">
+            <div class="screen-header">
+                <h2 data-i18n="achievements">Достижения</h2>
+                <button class="back-button" data-close-screen="true">&times;</button>
+            </div>
+            <div class="achievements-progress">
+                <div class="progress-bar">
+                    <div id="achievementsProgressFill" class="progress-fill"></div>
+                </div>
+                <div id="achievementsProgressText" class="progress-text">0/0</div>
+            </div>
+            <div id="achievementsContainer" class="achievements-container"></div>
+        </div>
+
+        <!-- Quests Screen -->
+        <div id="questsScreen" class="screen">
+            <div class="screen-header">
+                <h2 data-i18n="quests">Квесты</h2>
+                <button class="back-button" data-close-screen="true">&times;</button>
+            </div>
+            <div class="quests-progress">
+                <div class="progress-bar">
+                    <div id="questsProgressFill" class="progress-fill"></div>
+                </div>
+                <div id="questsProgressText" class="progress-text">0/0</div>
+            </div>
+            <div id="questsContainer" class="quests-container"></div>
+        </div>
+
+        <!-- Stats Screen -->
+        <div id="statsScreen" class="screen">
+            <div class="screen-header">
+                <h2 data-i18n="stats">Статистика</h2>
+                <button class="back-button" data-close-screen="true">&times;</button>
+            </div>
+            <div class="stats-container">
+                <div class="stats-section">
+                    <h3 data-i18n="generalStats">Общая статистика</h3>
+                    <div id="generalStatsContent" class="stats-content"></div>
+                </div>
+                <div class="stats-section">
+                    <h3 data-i18n="powerUps">Усилители</h3>
+                    <div id="powerUpsContent" class="stats-content"></div>
+                </div>
+                <div class="stats-section">
+                    <h3 data-i18n="charts">Графики</h3>
+                    <div class="chart-controls">
+                        <button class="chart-button active" data-chart="energy">Энергия</button>
+                        <button class="chart-button" data-chart="eps">EPS</button>
+                        <button class="chart-button" data-chart="clicks">Клики</button>
+                    </div>
+                    <canvas id="statsChart" width="300" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal dialogs -->
+        <div id="confirmDialog" class="modal hidden">
+            <div class="modal-content">
+                <h3 id="confirmTitle"></h3>
+                <p id="confirmMessage"></p>
+                <div class="modal-buttons">
+                    <button class="btn-primary" id="confirmYes" data-i18n="yes">Да</button>
+                    <button class="btn-secondary" id="confirmNo" data-i18n="no">Нет</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="messageDialog" class="modal hidden">
+            <div class="modal-content">
+                <h3 id="messageTitle"></h3>
+                <p id="messageText"></p>
+                <button class="btn-primary" id="messageOk" data-i18n="ok">ОК</button>
+            </div>
+        </div>
+
+        <div id="offlineNotification" class="notification hidden">
+            <div class="notification-content">
+                <h3 id="offlineTitle" data-i18n="offlineTitle">Вы были оффлайн</h3>
+                <p id="offlineMessage"></p>
+                <button class="btn-primary" id="offlineOk" data-i18n="ok">ОК</button>
+            </div>
+        </div>
+
+        <!-- Tutorial overlay -->
+        <div id="tutorial" class="tutorial hidden">
+            <div class="tutorial-step">
+                <div class="tutorial-arrow"></div>
+                <div class="tutorial-text" data-i18n="tutorialStep1">Тапните здесь, чтобы получить энергию!</div>
+            </div>
+        </div>
+    </div>
+
+<!-- Yandex Games SDK -->
+<script src="/sdk.js"></script>
+
+    <!-- Application Scripts -->
+    <script src="src/config.js"></script>
+    <script src="src/utils/format.js"></script>
+    <script src="src/utils/time.js"></script>
+    <script src="src/utils/storage.js"></script>
+    <script src="src/utils/audio.js"></script>
+    <script src="src/ui/i18n.js"></script>
+    <script src="src/game/Economy.js"></script>
+    <script src="src/game/AchievementSystem.js"></script>
+    <script src="src/game/QuestSystem.js"></script>
+    <script src="src/game/StatsSystem.js"></script>
+    <script src="src/game/PowerUpSystem.js"></script>
+    <script src="src/game/SaveSystem.js"></script>
+    <script src="src/game/GameState.js"></script>
+    <script src="src/sdk/YandexSDKManager.js"></script>
+    <script src="src/ui/Views.js"></script>
+    <script src="src/ui/UI.js"></script>
+    <script src="src/main.js"></script>
+</body>
+</html>
