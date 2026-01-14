@@ -8,30 +8,38 @@
 </head>
 <body>
     <div id="app" class="app-container">
+        <div id="starfield" class="starfield" aria-hidden="true"></div>
         <!-- Main game screen -->
         <div id="gameScreen" class="screen active">
             <div class="game-header">
                 <div class="stat-item">
-                    <div class="stat-label" data-i18n="currency">Энергия</div>
+                    <div class="stat-label" data-i18n="currency">⚡ Энергия</div>
                     <div class="stat-value" id="energyDisplay">0</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-label" data-i18n="eps">EPS</div>
+                    <div class="stat-label" data-i18n="eps">⏱ EPS</div>
                     <div class="stat-value" id="epsDisplay">0</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-label" data-i18n="clickPower">Клик</div>
+                    <div class="stat-label" data-i18n="clickPower">👆 Клик</div>
                     <div class="stat-value" id="clickPowerDisplay">0</div>
                 </div>
             </div>
 
             <div class="game-center">
-                <button id="clickButton" class="click-button" data-i18n="click">
+                <div class="orbit-system" aria-hidden="true">
+                    <div class="orbit orbit-1"></div>
+                    <div class="orbit orbit-2"></div>
+                    <div class="orbit orbit-3"></div>
+                </div>
+                <button id="clickButton" class="click-button" aria-label="click">
                     <div class="click-button-inner">
                         <span class="click-icon">⚛</span>
                     </div>
                 </button>
                 <div id="floatingNumbers" class="floating-numbers"></div>
+                <div id="particleContainer" class="particle-container"></div>
+                <div id="meteorContainer" class="meteor-container"></div>
             </div>
 
             <div class="game-footer">
@@ -52,6 +60,12 @@
                 <h2 data-i18n="shop">Магазин</h2>
                 <button class="back-button" data-close-screen="true">&times;</button>
             </div>
+            <div class="purchase-controls">
+                <button class="purchase-button active" data-purchase-mode="1">x1</button>
+                <button class="purchase-button" data-purchase-mode="10">x10</button>
+                <button class="purchase-button" data-purchase-mode="100">x100</button>
+                <button class="purchase-button" data-purchase-mode="max" data-i18n="buyMax">Max</button>
+            </div>
             <div id="shopContainer" class="shop-container"></div>
         </div>
 
@@ -60,6 +74,12 @@
             <div class="screen-header">
                 <h2 data-i18n="upgrades">Улучшения</h2>
                 <button class="back-button" data-close-screen="true">&times;</button>
+            </div>
+            <div class="purchase-controls">
+                <button class="purchase-button active" data-purchase-mode="1">x1</button>
+                <button class="purchase-button" data-purchase-mode="10">x10</button>
+                <button class="purchase-button" data-purchase-mode="100">x100</button>
+                <button class="purchase-button" data-purchase-mode="max" data-i18n="buyMax">Max</button>
             </div>
             <div id="upgradesContainer" class="upgrades-container"></div>
         </div>
@@ -96,6 +116,14 @@
                 <div class="setting-item">
                     <label data-i18n="soundLabel">Звук</label>
                     <button id="soundToggle" class="toggle-button active" data-i18n="on">ВКЛ</button>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="soundVolume">Громкость</label>
+                    <div class="volume-buttons">
+                        <button class="volume-button" data-volume="0">0%</button>
+                        <button class="volume-button active" data-volume="50">50%</button>
+                        <button class="volume-button" data-volume="100">100%</button>
+                    </div>
                 </div>
                 <div class="setting-item">
                     <label data-i18n="languageLabel">Язык</label>
@@ -206,8 +234,10 @@
             <div class="tutorial-step">
                 <div class="tutorial-arrow"></div>
                 <div class="tutorial-text" data-i18n="tutorialStep1">Тапните здесь, чтобы получить энергию!</div>
+                <button id="tutorialOk" class="btn-primary tutorial-ok" data-i18n="ok">ОК</button>
             </div>
         </div>
+        <div id="toastContainer" class="toast-container" aria-live="polite"></div>
     </div>
 
 <!-- Yandex Games SDK -->
@@ -217,7 +247,7 @@
     <script src="src/config.js"></script>
     <script src="src/utils/format.js"></script>
     <script src="src/utils/time.js"></script>
-    <script src="src/utils/storage.js"></script>
+    <script src="src/utils/persist.js"></script>
     <script src="src/utils/audio.js"></script>
     <script src="src/ui/i18n.js"></script>
     <script src="src/game/Economy.js"></script>

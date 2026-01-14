@@ -1,6 +1,6 @@
-// Storage utilities - handle both localStorage and cloud (async)
+// Persistence utilities - handle both localStorage and cloud (async)
 
-const StorageUtils = {
+const PersistUtils = {
     /**
      * Local storage wrapper
      */
@@ -9,7 +9,7 @@ const StorageUtils = {
             const data = localStorage.getItem(key);
             return data ? JSON.parse(data) : null;
         } catch (e) {
-            logError('Failed to read from localStorage:', e);
+            logError('Failed to read from local save:', e);
             return null;
         }
     },
@@ -19,7 +19,7 @@ const StorageUtils = {
             localStorage.setItem(key, JSON.stringify(value));
             return true;
         } catch (e) {
-            logError('Failed to write to localStorage:', e);
+            logError('Failed to write to local save:', e);
             return false;
         }
     },
@@ -29,7 +29,7 @@ const StorageUtils = {
             localStorage.removeItem(key);
             return true;
         } catch (e) {
-            logError('Failed to remove from localStorage:', e);
+            logError('Failed to remove from local save:', e);
             return false;
         }
     },
@@ -39,7 +39,7 @@ const StorageUtils = {
             localStorage.clear();
             return true;
         } catch (e) {
-            logError('Failed to clear localStorage:', e);
+            logError('Failed to clear local save:', e);
             return false;
         }
     },

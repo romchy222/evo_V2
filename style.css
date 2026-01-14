@@ -29,8 +29,16 @@ html, body {
     overflow: hidden;
     font-family: 'Courier New', monospace;
     background: linear-gradient(135deg, #0a0e27 0%, #1a0f3a 50%, #0f1a3a 100%);
+    background-size: 200% 200%;
+    animation: gradientShift 30s ease-in-out infinite;
     color: var(--text-primary);
     position: relative;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 /* Animated starfield background */
@@ -80,6 +88,35 @@ html::after {
     flex-direction: column;
     position: relative;
     z-index: 3;
+}
+
+.starfield {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    animation: starfieldDrift 40s linear infinite;
+}
+
+.star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+    animation: starTwinkle 8s ease-in-out infinite;
+}
+
+@keyframes starfieldDrift {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-40px); }
+}
+
+@keyframes starTwinkle {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
 }
 
 /* Screens */
@@ -147,7 +184,7 @@ html::after {
 }
 
 .stat-label {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 2px;
@@ -157,10 +194,20 @@ html::after {
 }
 
 .stat-value {
-    font-size: 1.4rem;
+    font-size: 1.6rem;
     font-weight: bold;
     color: var(--glow-cyan);
     text-shadow: 0 0 10px var(--glow-cyan), 0 0 20px rgba(0, 217, 255, 0.5);
+}
+
+.stat-value.stat-pop {
+    animation: statPop 0.4s ease-out;
+}
+
+@keyframes statPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); color: var(--success-color); }
+    100% { transform: scale(1); }
 }
 
 .game-center {
@@ -172,6 +219,62 @@ html::after {
     position: relative;
     overflow: hidden;
     background: radial-gradient(circle at center, rgba(0, 217, 255, 0.05) 0%, transparent 70%);
+}
+
+.orbit-system {
+    position: absolute;
+    width: 320px;
+    height: 320px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.orbit {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: orbitSpin 90s linear infinite;
+    opacity: 0.25;
+}
+
+.orbit-1 {
+    width: 200px;
+    height: 200px;
+    border-width: 1px;
+    animation-duration: 120s;
+}
+
+.orbit-2 {
+    width: 260px;
+    height: 260px;
+    border-width: 2px;
+    animation-duration: 150s;
+}
+
+.orbit-3 {
+    width: 320px;
+    height: 320px;
+    border-width: 1.5px;
+    animation-duration: 180s;
+}
+
+@keyframes orbitSpin {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.satellite {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: radial-gradient(circle, #fff 0%, var(--glow-cyan) 60%, transparent 100%);
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(0, 217, 255, 0.8);
+    top: 50%;
+    left: 50%;
 }
 
 .floating-numbers {
@@ -190,6 +293,59 @@ html::after {
     pointer-events: none;
     animation: floatUp 1.5s ease-out forwards;
     font-family: 'Courier New', monospace;
+}
+
+.floating-number.crit {
+    color: var(--accent-color);
+    text-shadow: 0 0 20px rgba(255, 0, 110, 0.8);
+    font-size: 2.2rem;
+}
+
+.particle-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.click-particle {
+    position: absolute;
+    width: var(--size);
+    height: var(--size);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(0, 217, 255, 0.8) 60%, rgba(0, 217, 255, 0) 100%);
+    border-radius: 50%;
+    animation: particleBurst 0.6s ease-out forwards;
+}
+
+@keyframes particleBurst {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+}
+
+.meteor-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.meteor {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    pointer-events: auto;
+    background: radial-gradient(circle, #fff 0%, #ffd166 50%, rgba(255, 209, 102, 0) 70%);
+    box-shadow: 0 0 20px rgba(255, 209, 102, 0.8);
+    animation: meteorDrift 6s ease-in-out forwards;
+}
+
+@keyframes meteorDrift {
+    0% { transform: translateX(0) scale(1); opacity: 0; }
+    10% { opacity: 1; }
+    100% { transform: translateX(120px) scale(0.6); opacity: 0; }
 }
 
 @keyframes floatUp {
@@ -224,6 +380,13 @@ html::after {
     position: relative;
     overflow: hidden;
     font-family: system-ui;
+    animation: coreBreathe 4.5s ease-in-out infinite;
+    z-index: 3;
+}
+
+@keyframes coreBreathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
 }
 
 /* Cosmic pulse animation */
@@ -258,6 +421,47 @@ html::after {
         0 0 120px rgba(179, 102, 255, 0.8),
         inset 0 0 60px rgba(255, 255, 255, 0.3),
         inset -5px -5px 30px rgba(0, 0, 0, 0.5);
+}
+
+.click-button.click-hit {
+    animation: coreBreathe 4.5s ease-in-out infinite, clickHit 0.18s ease-out;
+}
+
+@keyframes clickHit {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
+.click-button.glow-flash {
+    animation: coreBreathe 4.5s ease-in-out infinite, clickHit 0.18s ease-out;
+    box-shadow:
+        0 0 80px rgba(0, 217, 255, 1),
+        0 0 140px rgba(179, 102, 255, 0.9),
+        inset 0 0 60px rgba(255, 255, 255, 0.3),
+        inset -5px -5px 30px rgba(0, 0, 0, 0.5);
+}
+
+.click-button.prestige-flash {
+    animation: prestigeFlash 0.6s ease-out;
+}
+
+@keyframes prestigeFlash {
+    0% { filter: hue-rotate(0deg) brightness(1); }
+    50% { filter: hue-rotate(60deg) brightness(1.4); }
+    100% { filter: hue-rotate(0deg) brightness(1); }
+}
+
+.screen-shake {
+    animation: screenShake 0.15s ease-in-out;
+}
+
+@keyframes screenShake {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(3px, -2px); }
+    50% { transform: translate(-3px, 2px); }
+    75% { transform: translate(2px, -3px); }
+    100% { transform: translate(0, 0); }
 }
 
 .click-button:hover {
@@ -379,6 +583,32 @@ html::after {
     box-shadow: 0 5px 20px rgba(0, 217, 255, 0.2);
 }
 
+.purchase-controls {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 217, 255, 0.2);
+    background: rgba(10, 14, 39, 0.6);
+}
+
+.purchase-button {
+    padding: 6px 14px;
+    background: rgba(0, 217, 255, 0.1);
+    color: var(--text-secondary);
+    border: 1px solid var(--glow-cyan);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.purchase-button.active {
+    background: linear-gradient(135deg, var(--glow-cyan), var(--glow-purple));
+    color: var(--bg-dark);
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
+    border-color: var(--accent-color);
+}
+
 .screen-header h2 {
     font-size: 1.6rem;
     margin: 0;
@@ -464,6 +694,12 @@ html::after {
 .upgrade-item.affordable {
     border-color: var(--success-color);
     box-shadow: 0 0 20px rgba(0, 245, 184, 0.3);
+    animation: affordablePulse 2s ease-in-out infinite;
+}
+
+@keyframes affordablePulse {
+    0%, 100% { box-shadow: 0 0 12px rgba(0, 245, 184, 0.25); }
+    50% { box-shadow: 0 0 24px rgba(0, 245, 184, 0.6); }
 }
 
 .shop-item.unaffordable,
@@ -488,6 +724,13 @@ html::after {
 .item-desc {
     font-size: 0.85rem;
     color: var(--text-secondary);
+}
+
+.item-effect {
+    font-size: 0.8rem;
+    color: var(--success-color);
+    margin-top: 4px;
+    text-shadow: 0 0 5px rgba(0, 245, 184, 0.3);
 }
 
 .item-level {
@@ -540,10 +783,12 @@ html::after {
 }
 
 .buy-button:disabled {
-    background: var(--text-secondary);
+    background: linear-gradient(135deg, rgba(160, 196, 255, 0.2), rgba(45, 59, 92, 0.6));
+    border-color: rgba(160, 196, 255, 0.3);
     cursor: not-allowed;
-    opacity: 0.3;
-    box-shadow: none;
+    opacity: 0.6;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.4);
+    color: var(--text-secondary);
 }
 
 /* Prestige Screen */
@@ -574,6 +819,17 @@ html::after {
     color: var(--glow-purple);
     font-weight: bold;
     text-shadow: 0 0 8px rgba(179, 102, 255, 0.5);
+}
+
+.prestige-details {
+    margin-top: 14px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    text-align: left;
+}
+
+.prestige-details ul {
+    margin: 6px 0 12px 16px;
 }
 
 #prestigeButton {
@@ -732,6 +988,28 @@ html::after {
 .language-buttons {
     display: flex;
     gap: 8px;
+}
+
+.volume-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.volume-button {
+    padding: 6px 12px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.volume-button.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
 }
 
 .lang-button {
@@ -1310,6 +1588,55 @@ html::after {
     font-size: 1.05rem;
 }
 
+.toast-container {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 2500;
+    pointer-events: none;
+}
+
+.toast {
+    background: rgba(10, 14, 39, 0.9);
+    border: 1px solid rgba(0, 217, 255, 0.3);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+    animation: toastSlide 0.3s ease-out;
+    pointer-events: auto;
+}
+
+.toast-success {
+    border-color: var(--success-color);
+}
+
+.toast-warning {
+    border-color: var(--warning-color);
+}
+
+.toast-action {
+    background: transparent;
+    color: var(--glow-cyan);
+    border: 1px solid rgba(0, 217, 255, 0.5);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+}
+
+@keyframes toastSlide {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
 /* Tutorial */
 .tutorial {
     position: fixed;
@@ -1355,6 +1682,10 @@ html::after {
     font-weight: 600;
     text-align: center;
     color: var(--text-primary);
+}
+
+.tutorial-ok {
+    margin-top: 16px;
 }
 
 /* Scrollbar Styling */

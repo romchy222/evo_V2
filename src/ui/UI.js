@@ -4,6 +4,8 @@ const UI = {
     lastSaveTime: 0,
     lastCloudSyncTime: 0,
     adMultiplierEndTime: 0,
+    purchaseMode: 1,
+    meteorTimer: null,
     
     /**
      * Initialize UI
@@ -12,6 +14,10 @@ const UI = {
         logDebug('Initializing UI');
         
         this.setupEventListeners();
+        this.buildStarfield();
+        this.updateSatellites();
+        this.updatePurchaseButtons();
+        this.scheduleMeteor();
         Views.renderHeader();
         Views.renderShop();
         
@@ -28,9 +34,11 @@ const UI = {
         // Click button
         document.getElementById('clickButton').addEventListener('click', (e) => {
             e.preventDefault();
-            const gain = GameState.click();
-            if (gain > 0) {
-                this.showFloatingNumber(gain, e.target);
+            const result = GameState.click();
+            if (result && result.gain > 0) {
+                this.showFloatingNumber(result.gain, e.target, result.isCrit, result.critMultiplier);
+                this.spawnClickParticles(e.target);
+                this.triggerClickEffects();
             }
             Views.renderHeader();
         });
@@ -59,6 +67,16 @@ const UI = {
             GameState.soundEnabled = enabled;
             e.target.classList.toggle('active');
             e.target.textContent = i18n.t(enabled ? 'on' : 'off');
+        });
+
+        document.querySelectorAll('.volume-button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const level = Number(btn.getAttribute('data-volume'));
+                AudioUtils.setVolume(level / 100);
+                GameState.soundVolume = level / 100;
+                this.updateSettingsUI();
+            });
         });
         
         document.querySelectorAll('.lang-button').forEach(btn => {
@@ -101,6 +119,26 @@ const UI = {
             e.preventDefault();
             Views.renderLeaderboard();
         });
+
+        document.querySelectorAll('[data-purchase-mode]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const mode = btn.getAttribute('data-purchase-mode');
+                this.purchaseMode = mode === 'max' ? 'max' : Number(mode);
+                document.querySelectorAll('[data-purchase-mode]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                Views.renderShop();
+                Views.renderUpgrades();
+            });
+        });
+
+        const tutorialOk = document.getElementById('tutorialOk');
+        if (tutorialOk) {
+            tutorialOk.addEventListener('click', (e) => {
+                e.preventDefault();
+                Views.advanceTutorial();
+            });
+        }
         
         // Modal close
         document.querySelectorAll('.modal').forEach(modal => {
@@ -153,9 +191,11 @@ const UI = {
         if (tab === 'shop') {
             document.getElementById('shopScreen').classList.add('active');
             Views.renderShop();
+            this.updatePurchaseButtons();
         } else if (tab === 'upgrades') {
             document.getElementById('upgradesScreen').classList.add('active');
             Views.renderUpgrades();
+            this.updatePurchaseButtons();
         } else if (tab === 'prestige') {
             document.getElementById('prestigeScreen').classList.add('active');
             Views.renderPrestige();
@@ -176,6 +216,14 @@ const UI = {
             this.updateSettingsUI();
         }
     },
+
+    updatePurchaseButtons() {
+        document.querySelectorAll('[data-purchase-mode]').forEach(btn => {
+            const mode = btn.getAttribute('data-purchase-mode');
+            const isActive = this.purchaseMode === (mode === 'max' ? 'max' : Number(mode));
+            btn.classList.toggle('active', isActive);
+        });
+    },
     
     /**
      * Back to game
@@ -193,6 +241,11 @@ const UI = {
         const soundBtn = document.getElementById('soundToggle');
         soundBtn.classList.toggle('active', AudioUtils.isEnabled);
         soundBtn.textContent = i18n.t(AudioUtils.isEnabled ? 'on' : 'off');
+
+        document.querySelectorAll('.volume-button').forEach(btn => {
+            const level = Number(btn.getAttribute('data-volume'));
+            btn.classList.toggle('active', Math.round(AudioUtils.volume * 100) === level);
+        });
         
         document.querySelectorAll('.lang-button').forEach(btn => {
             btn.classList.remove('active');
@@ -200,16 +253,27 @@ const UI = {
                 btn.classList.add('active');
             }
         });
+
+        const watchAdBtn = document.getElementById('watchAdBtn');
+        if (watchAdBtn) {
+            const now = TimeUtils.now();
+            const onCooldown = now - GameState.lastAdRewarded < CONFIG.AD.rewardedCooldown;
+            const bonusActive = GameState.offlineMultiplierEnd > now;
+            watchAdBtn.disabled = onCooldown || bonusActive;
+            watchAdBtn.classList.toggle('disabled', onCooldown || bonusActive);
+        }
     },
     
     /**
      * Show floating number when clicking
      */
-    showFloatingNumber(amount, sourceEl) {
+    showFloatingNumber(amount, sourceEl, isCrit = false, critMultiplier = 1) {
         const container = document.getElementById('floatingNumbers');
         const number = document.createElement('div');
-        number.className = 'floating-number';
-        number.textContent = '+' + FormatUtils.format(amount);
+        number.className = `floating-number${isCrit ? ' crit' : ''}`;
+        number.textContent = isCrit
+            ? `CRIT +${FormatUtils.format(amount)}`
+            : '+' + FormatUtils.format(amount);
         
         const rect = sourceEl.getBoundingClientRect();
         const x = rect.left + rect.width / 2;
@@ -228,10 +292,21 @@ const UI = {
      */
     async watchRewardedAd() {
         logDebug('Watching rewarded ad...');
+        const now = TimeUtils.now();
+        if (GameState.offlineMultiplierEnd > now) {
+            this.showToast(i18n.t('bonusActive'), 'info');
+            return;
+        }
+        if (now - GameState.lastAdRewarded < CONFIG.AD.rewardedCooldown) {
+            this.showToast(i18n.t('adCooldown'), 'warning');
+            return;
+        }
         const result = await YandexSDKManager.showRewarded();
         
         if (result.success) {
             GameState.applyAdBonus();
+            GameState.lastAdRewarded = TimeUtils.now();
+            this.showToast(i18n.t('rewardReceived', { reward: '+' + FormatUtils.format(GameState.eps) }), 'success');
             this.showMessage(
                 'Успех!',
                 i18n.t('adRewarded', {
@@ -240,6 +315,7 @@ const UI = {
                 })
             );
             Views.renderHeader();
+            this.updateSettingsUI();
         } else {
             if (!YandexSDKManager.isLocalStub) {
                 this.showMessage('Ошибка', i18n.t('errorNoAd'));
@@ -247,6 +323,8 @@ const UI = {
                 // In stub mode, reward anyway after simulation
                 await new Promise(r => setTimeout(r, 1500));
                 GameState.applyAdBonus();
+                GameState.lastAdRewarded = TimeUtils.now();
+                this.showToast(i18n.t('rewardReceived', { reward: '+' + FormatUtils.format(GameState.eps) }), 'success');
                 this.showMessage(
                     'Успех!',
                     i18n.t('adRewarded', {
@@ -255,8 +333,156 @@ const UI = {
                     })
                 );
                 Views.renderHeader();
+                this.updateSettingsUI();
             }
         }
+    },
+
+    triggerClickEffects() {
+        const button = document.getElementById('clickButton');
+        button.classList.remove('click-hit');
+        button.classList.remove('glow-flash');
+        void button.offsetWidth;
+        button.classList.add('click-hit');
+        button.classList.add('glow-flash');
+
+        const app = document.getElementById('app');
+        app.classList.remove('screen-shake');
+        void app.offsetWidth;
+        app.classList.add('screen-shake');
+
+        setTimeout(() => {
+            button.classList.remove('click-hit');
+            button.classList.remove('glow-flash');
+            app.classList.remove('screen-shake');
+        }, 200);
+    },
+
+    triggerPrestigeEffect() {
+        const button = document.getElementById('clickButton');
+        button.classList.remove('prestige-flash');
+        void button.offsetWidth;
+        button.classList.add('prestige-flash');
+    },
+
+    spawnClickParticles(sourceEl) {
+        const container = document.getElementById('particleContainer');
+        if (!container) return;
+        const count = Math.floor(
+            CONFIG.CLICK.particleMin + Math.random() * (CONFIG.CLICK.particleMax - CONFIG.CLICK.particleMin + 1)
+        );
+        const rect = sourceEl.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        for (let i = 0; i < count; i++) {
+            const particle = document.createElement('span');
+            particle.className = 'click-particle';
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 40 + Math.random() * 60;
+            const x = Math.cos(angle) * distance;
+            const y = Math.sin(angle) * distance;
+            particle.style.left = `${centerX}px`;
+            particle.style.top = `${centerY}px`;
+            particle.style.setProperty('--dx', `${x}px`);
+            particle.style.setProperty('--dy', `${y}px`);
+            particle.style.setProperty('--size', `${4 + Math.random() * 6}px`);
+            container.appendChild(particle);
+            setTimeout(() => particle.remove(), 700);
+        }
+    },
+
+    buildStarfield() {
+        const starfield = document.getElementById('starfield');
+        if (!starfield) return;
+        starfield.innerHTML = '';
+        const count = 50;
+        for (let i = 0; i < count; i++) {
+            const star = document.createElement('span');
+            star.className = 'star';
+            star.style.left = `${Math.random() * 100}%`;
+            star.style.top = `${Math.random() * 100}%`;
+            star.style.animationDelay = `${Math.random() * 10}s`;
+            star.style.animationDuration = `${12 + Math.random() * 12}s`;
+            starfield.appendChild(star);
+        }
+    },
+
+    updateSatellites() {
+        const totalUpgrades = (GameState.upgrades.clickPower || 0)
+            + (GameState.upgrades.eps || 0)
+            + (GameState.upgrades.multiplier || 0);
+        const totalShop = Object.values(GameState.shopItems || {}).reduce((sum, val) => sum + val, 0);
+        const satellites = Math.min(10, Math.floor((totalUpgrades + totalShop) / 2));
+        const orbits = document.querySelectorAll('.orbit');
+
+        orbits.forEach((orbit, idx) => {
+            orbit.querySelectorAll('.satellite').forEach(node => node.remove());
+            const count = Math.min(3, Math.max(0, satellites - idx * 2));
+            for (let i = 0; i < count; i++) {
+                const sat = document.createElement('span');
+                sat.className = 'satellite';
+                sat.style.transform = `rotate(${(360 / count) * i}deg) translateX(${60 + idx * 25}px)`;
+                orbit.appendChild(sat);
+            }
+        });
+    },
+
+    scheduleMeteor() {
+        if (this.meteorTimer) {
+            clearTimeout(this.meteorTimer);
+        }
+        const delay = CONFIG.METEOR.minInterval
+            + Math.random() * (CONFIG.METEOR.maxInterval - CONFIG.METEOR.minInterval);
+        this.meteorTimer = setTimeout(() => this.spawnMeteor(), delay);
+    },
+
+    spawnMeteor() {
+        const container = document.getElementById('meteorContainer');
+        if (!container || GameState.isPaused) {
+            this.scheduleMeteor();
+            return;
+        }
+        container.innerHTML = '';
+        const meteor = document.createElement('button');
+        meteor.className = 'meteor';
+        meteor.type = 'button';
+        meteor.style.left = `${15 + Math.random() * 70}%`;
+        meteor.style.top = `${20 + Math.random() * 40}%`;
+        meteor.addEventListener('click', (e) => {
+            e.preventDefault();
+            const bonus = CONFIG.METEOR.bonusFlat + (GameState.eps * CONFIG.METEOR.bonusMultiplier);
+            GameState.energy += bonus;
+            GameState.totalEarned += bonus;
+            this.showToast(i18n.t('meteorReward', { reward: FormatUtils.format(bonus) }), 'success');
+            Views.renderHeader();
+            meteor.remove();
+            this.scheduleMeteor();
+        }, { once: true });
+        container.appendChild(meteor);
+        setTimeout(() => {
+            meteor.remove();
+            this.scheduleMeteor();
+        }, 7000);
+    },
+
+    showToast(message, type = 'info', action) {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <span>${message}</span>
+            ${action ? `<button class="toast-action">${action.label}</button>` : ''}
+        `;
+        if (action) {
+            toast.querySelector('.toast-action').addEventListener('click', () => {
+                action.onClick();
+                toast.remove();
+            });
+        }
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 2500);
     },
     
     /**
@@ -361,6 +587,8 @@ const UI = {
     updateUI() {
         Views.renderHeader();
         Views.renderShop();
+        Views.renderUpgrades();
+        this.updateSatellites();
         this.updateSettingsUI();
     }
 };

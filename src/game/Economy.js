@@ -7,6 +7,32 @@ const Economy = {
     calculateCost(level, basePrice, multiplier) {
         return Math.floor(basePrice * Math.pow(multiplier, level));
     },
+
+    /**
+     * Calculate total cost for bulk purchase
+     */
+    calculateBulkCost(amount, currentLevel, basePrice, multiplier) {
+        let total = 0;
+        for (let i = 0; i < amount; i++) {
+            total += this.calculateCost(currentLevel + i, basePrice, multiplier);
+        }
+        return Math.floor(total);
+    },
+
+    /**
+     * Calculate maximum affordable amount
+     */
+    calculateMaxAffordable(energy, currentLevel, basePrice, multiplier, limit = 500) {
+        let count = 0;
+        let remaining = energy;
+        while (count < limit) {
+            const cost = this.calculateCost(currentLevel + count, basePrice, multiplier);
+            if (remaining < cost) break;
+            remaining -= cost;
+            count++;
+        }
+        return count;
+    },
     
     /**
      * Calculate upgrade effect for given level

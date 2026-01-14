@@ -2,6 +2,8 @@
 
 let lastFrameTime = TimeUtils.now();
 let gameLoopId = null;
+let tickAccumulator = 0;
+let lastUiUpdate = 0;
 
 /**
  * Main game loop
@@ -11,22 +13,33 @@ function gameLoop() {
     const deltaTime = Math.min(now - lastFrameTime, 100); // Cap at 100ms
     lastFrameTime = now;
     
-    // Update game state
-    GameState.update(deltaTime);
+    tickAccumulator += deltaTime;
+    const tickInterval = CONFIG.GAME.TICK_INTERVAL;
+    let tickCount = 0;
+    while (tickAccumulator >= tickInterval && tickCount < 5) {
+        GameState.update(tickInterval);
+        tickAccumulator -= tickInterval;
+        tickCount++;
+    }
     
     // Update UI
-    Views.renderHeader();
+    if (now - lastUiUpdate > CONFIG.GAME.UI_UPDATE_INTERVAL) {
+        Views.renderHeader();
+        lastUiUpdate = now;
+    }
     
     // Auto-save periodically
     if (now - UI.lastSaveTime > CONFIG.AUTO_SAVE_INTERVAL) {
         UI.saveGame();
     }
     
-    // Show interstitial ad occasionally (every 5 minutes of active play)
-    if (!GameState.isPaused && now - GameState.lastAdInterstitial > 5 * 60 * 1000) {
-        // Random chance to show ad
-        if (Math.random() < 0.1) { // 10% chance per frame
+    if (!GameState.isPaused && now - GameState.sessionStart > CONFIG.AD.interstitialMinActive) {
+        if (!GameState.nextInterstitialAt) {
+            GameState.nextInterstitialAt = now + CONFIG.AD.interstitialCooldown;
+        }
+        if (now > GameState.nextInterstitialAt) {
             YandexSDKManager.showInterstitial();
+            GameState.nextInterstitialAt = now + CONFIG.AD.interstitialCooldown;
         }
     }
     
@@ -62,6 +75,7 @@ async function initGame() {
     
     // Restore audio setting
     AudioUtils.isEnabled = GameState.soundEnabled;
+    AudioUtils.setVolume(GameState.soundVolume ?? 1);
     
     // Check for offline income
     const offlineData = GameState.handleOfflineIncome();
@@ -106,3 +120,9 @@ if (document.readyState === 'loading') {
 // Cleanup on unload
 window.addEventListener('beforeunload', cleanup);
 window.addEventListener('unload', cleanup);
+window.addEventListener('error', (event) => {
+    logError('Global error:', event.message || event.error);
+});
+window.addEventListener('unhandledrejection', (event) => {
+    logError('Unhandled rejection:', event.reason);
+});

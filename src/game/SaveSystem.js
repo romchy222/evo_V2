@@ -20,6 +20,9 @@ const SaveSystem = {
                 eps: 0,
                 multiplier: 0
             },
+
+            // Shop items
+            shopItems: {},
             
             // Prestige
             prestigeCount: 0,
@@ -27,6 +30,7 @@ const SaveSystem = {
             
             // Settings
             soundEnabled: true,
+            soundVolume: 1,
             language: CONFIG.DEFAULT_LANGUAGE,
             
             // Timestamps
@@ -34,6 +38,8 @@ const SaveSystem = {
             lastActive: TimeUtils.now(),
             lastAdInterstitial: 0,
             lastAdRewarded: 0,
+            sessionStart: TimeUtils.now(),
+            nextInterstitialAt: 0,
             
             // Achievements
             achievements: [],
@@ -68,6 +74,8 @@ const SaveSystem = {
             if (!data.achievements) data.achievements = [];
             // Add other v2 fields
         }
+        if (!data.shopItems) data.shopItems = {};
+        if (!data.soundVolume && data.soundVolume !== 0) data.soundVolume = 1;
         
         return data;
     },
@@ -77,7 +85,7 @@ const SaveSystem = {
      */
     loadLocal() {
         try {
-            const data = StorageUtils.getLocal(this.STORAGE_KEY);
+            const data = PersistUtils.getLocal(this.STORAGE_KEY);
             
             if (!data) {
                 logDebug('No local save found');
@@ -110,20 +118,24 @@ const SaveSystem = {
                 clickPower: gameState.clickPower,
                 eps: gameState.eps,
                 upgrades: { ...gameState.upgrades },
+                shopItems: { ...gameState.shopItems },
                 prestigeCount: gameState.prestigeCount,
                 prestigePoints: gameState.prestigePoints,
                 soundEnabled: gameState.soundEnabled,
+                soundVolume: gameState.soundVolume,
                 language: gameState.language,
                 lastSave: TimeUtils.now(),
                 lastActive: gameState.lastActive,
                 lastAdInterstitial: gameState.lastAdInterstitial,
                 lastAdRewarded: gameState.lastAdRewarded,
+                sessionStart: gameState.sessionStart,
+                nextInterstitialAt: gameState.nextInterstitialAt,
                 achievements: gameState.achievements || [],
                 tutorialCompleted: gameState.tutorialCompleted,
                 tutorialStep: gameState.tutorialStep
             };
             
-            StorageUtils.setLocal(this.STORAGE_KEY, saveData);
+            PersistUtils.setLocal(this.STORAGE_KEY, saveData);
             logDebug('Saved to local storage');
             return true;
         } catch (e) {
@@ -168,6 +180,7 @@ const SaveSystem = {
                 clickPower: gameState.clickPower,
                 eps: gameState.eps,
                 upgrades: { ...gameState.upgrades },
+                shopItems: { ...gameState.shopItems },
                 prestigeCount: gameState.prestigeCount,
                 prestigePoints: gameState.prestigePoints,
                 lastSave: TimeUtils.now()
@@ -205,7 +218,7 @@ const SaveSystem = {
      * Delete all saves
      */
     deleteAll() {
-        StorageUtils.removeLocal(this.STORAGE_KEY);
+        PersistUtils.removeLocal(this.STORAGE_KEY);
         logDebug('Deleted all local saves');
     }
 };

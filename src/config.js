@@ -7,10 +7,22 @@ const CONFIG = {
     AUTO_SAVE_INTERVAL: 15000, // 15 seconds
     CLOUD_SYNC_INTERVAL: 60000, // 60 seconds
     OFFLINE_INCOME_LIMIT: 3 * 60 * 60 * 1000, // 3 hours in milliseconds
+    GAME: {
+        TICK_INTERVAL: 100, // 10x per second economy ticks
+        UI_UPDATE_INTERVAL: 100, // UI updates up to 10x per second
+        MAX_GAIN_PER_TICK: 1e9
+    },
     
     // Click mechanics
     INITIAL_CLICK_POWER: 1,
     INITIAL_EPS: 0,
+    CLICK: {
+        critChance: 0.03,
+        critMin: 3,
+        critMax: 8,
+        particleMin: 5,
+        particleMax: 12
+    },
     
     // Upgrades balance
     UPGRADES: {
@@ -114,11 +126,21 @@ const CONFIG = {
     // Advertisement
     AD: {
         interstitialCooldown: 3 * 60 * 1000, // 3 minutes between interstitials
+        interstitialMinActive: 60 * 1000,
+        rewardedCooldown: 90 * 1000,
         rewardedBonus: {
             type: 'multiplier', // 'multiplier', 'offline', or 'instant'
             multiplier: 2,
             duration: 60 * 1000 // 60 seconds
         }
+    },
+
+    // Random meteor events
+    METEOR: {
+        minInterval: 45000,
+        maxInterval: 120000,
+        bonusMultiplier: 15,
+        bonusFlat: 50
     },
     
     // Leaderboard
@@ -131,6 +153,7 @@ const CONFIG = {
     UI: {
         numberFormat: 'compact', // 'compact' (1.2K) or 'full' (1200)
         animationDuration: 300,
+        statPopDuration: 400
     },
     
     // Localization

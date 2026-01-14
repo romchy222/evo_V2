@@ -13,9 +13,9 @@ const i18n = {
             off: 'ВЫКЛ',
             
             // Main UI
-            currency: 'Энергия',
-            eps: 'EPS',
-            clickPower: 'Клик',
+            currency: '⚡ Энергия',
+            eps: '⏱ EPS',
+            clickPower: '👆 Клик',
             click: 'Тапните!',
             shop: 'Магазин',
             upgrades: 'Улучшения',
@@ -61,6 +61,13 @@ const i18n = {
             canPrestige: 'Вы готовы к престижу!',
             prestigeButton: 'Престиж ({amount} очков)',
             prestigeConfirm: 'Вы потеряете весь прогресс, но получите постоянный бонус {bonus}',
+            prestigeResetList: 'После престижа будет сброшено:',
+            prestigeResetEnergy: 'Энергия и доход',
+            prestigeResetUpgrades: 'Улучшения',
+            prestigeResetShop: 'Генераторы',
+            prestigeKeepList: 'Сохранится:',
+            prestigeKeepPoints: 'Очки престижа',
+            prestigeKeepAchievements: 'Достижения и статистика',
             
             // Leaderboard
             leaderboardEmpty: 'Лидерборд пуст',
@@ -139,6 +146,7 @@ const i18n = {
             
             // Settings
             soundLabel: 'Звук',
+            soundVolume: 'Громкость',
             languageLabel: 'Язык',
             watchAdForBonus: 'Смотреть рекламу за бонус',
             syncCloud: 'Синхронизировать с облаком',
@@ -149,6 +157,9 @@ const i18n = {
             // Offline
             offlineTitle: 'Вы были оффлайн',
             offlineMessage: 'Получено {earned} энергии за {time} оффлайна',
+            bonusActive: 'Бонус уже активен',
+            adCooldown: 'Реклама скоро будет доступна',
+            meteorReward: 'Метеорит! +{reward} энергии',
             
             // Errors and messages
             errorNoAd: 'Реклама недоступна',
@@ -175,6 +186,11 @@ const i18n = {
             levelShort: 'Ур.',
             priceLabel: 'Цена',
             buyButton: 'Купить',
+            buyMax: 'Макс',
+            effectLabel: 'Эффект: {effect}',
+            purchaseSuccess: 'Покупка успешна',
+            notEnoughEnergy: 'Недостаточно энергии',
+            goToShop: 'В магазин',
             bought: 'Куплено!',
             notAffordable: 'Недостаточно',
             playerRank: 'Ваше место: {rank}',
@@ -193,9 +209,9 @@ const i18n = {
             off: 'OFF',
             
             // Main UI
-            currency: 'Energy',
-            eps: 'EPS',
-            clickPower: 'Click Power',
+            currency: '⚡ Energy',
+            eps: '⏱ EPS',
+            clickPower: '👆 Click Power',
             click: 'Tap!',
             shop: 'Shop',
             upgrades: 'Upgrades',
@@ -241,6 +257,13 @@ const i18n = {
             canPrestige: 'You are ready for prestige!',
             prestigeButton: 'Prestige ({amount} points)',
             prestigeConfirm: 'You will lose all progress but gain permanent bonus {bonus}',
+            prestigeResetList: 'After prestige you reset:',
+            prestigeResetEnergy: 'Energy and income',
+            prestigeResetUpgrades: 'Upgrades',
+            prestigeResetShop: 'Generators',
+            prestigeKeepList: 'You keep:',
+            prestigeKeepPoints: 'Prestige points',
+            prestigeKeepAchievements: 'Achievements and stats',
             
             // Leaderboard
             leaderboardEmpty: 'Leaderboard is empty',
@@ -319,6 +342,7 @@ const i18n = {
             
             // Settings
             soundLabel: 'Sound',
+            soundVolume: 'Volume',
             languageLabel: 'Language',
             watchAdForBonus: 'Watch ad for bonus',
             syncCloud: 'Sync with cloud',
@@ -329,6 +353,9 @@ const i18n = {
             // Offline
             offlineTitle: 'You were offline',
             offlineMessage: 'You earned {earned} energy during {time} offline',
+            bonusActive: 'Bonus already active',
+            adCooldown: 'Ad will be available soon',
+            meteorReward: 'Meteor! +{reward} energy',
             
             // Errors and messages
             errorNoAd: 'Ad not available',
@@ -355,6 +382,11 @@ const i18n = {
             levelShort: 'Lvl',
             priceLabel: 'Price',
             buyButton: 'Buy',
+            buyMax: 'Max',
+            effectLabel: 'Effect: {effect}',
+            purchaseSuccess: 'Purchase successful',
+            notEnoughEnergy: 'Not enough energy',
+            goToShop: 'Go to shop',
             bought: 'Bought!',
             notAffordable: 'Not enough',
             playerRank: 'Your rank: {rank}',
@@ -373,7 +405,7 @@ const i18n = {
             this.currentLanguage = lang;
             document.documentElement.lang = lang;
             this.updatePageText();
-            StorageUtils.setLocal('language', lang);
+            PersistUtils.setLocal('language', lang);
         }
     },
     
@@ -423,7 +455,7 @@ const i18n = {
      * Load saved language
      */
     loadLanguage() {
-        const saved = StorageUtils.getLocal('language');
+        const saved = PersistUtils.getLocal('language');
         if (saved && CONFIG.LANGUAGES.includes(saved)) {
             this.currentLanguage = saved;
         }
